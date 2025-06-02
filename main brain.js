@@ -34,6 +34,7 @@ let nextFruitType = null;
 let score = 0;
 let bestScore = 0; // Add bestScore variable
 let canDrop = true;
+let abilityAppliedInTouch = false; // متغیر جدید برای پیگیری اعمال ابیلیتی در رویداد لمسی
 const dropCooldown = 500; // milliseconds
 
 // Function to play merge animation (GIF focus)
@@ -1228,6 +1229,15 @@ function handleFruitClick(event) {
             if (currentFruit && currentFruit.isStatic) {
                 canDrop = true;
             }
+            
+            // تنظیم پرچم برای رویدادهای لمسی
+            if (event.type === 'touchstart') {
+                abilityAppliedInTouch = true;
+                // تنظیم تایمر برای ریست کردن پرچم بعد از مدت کوتاهی
+                setTimeout(() => {
+                    abilityAppliedInTouch = false;
+                }, 500);
+            }
         } else if (isUpgradeAbilityActive) {
             const upgradeSuccessful = upgradeFruit(clickedBody);
             if (upgradeSuccessful) {
@@ -1244,6 +1254,15 @@ function handleFruitClick(event) {
             // Re-enable fruit dropping if a fruit is ready
             if (currentFruit && currentFruit.isStatic) {
                 canDrop = true;
+            }
+            
+            // تنظیم پرچم برای رویدادهای لمسی
+            if (event.type === 'touchstart') {
+                abilityAppliedInTouch = true;
+                // تنظیم تایمر برای ریست کردن پرچم بعد از مدت کوتاهی
+                setTimeout(() => {
+                    abilityAppliedInTouch = false;
+                }, 500);
             }
         }
     } else if (isRemoveAbilityActive || isUpgradeAbilityActive) {
@@ -1325,47 +1344,47 @@ if (gameCanvas) { // Check if gameCanvas is initialized
     });
     
     // اضافه کردن پشتیبانی از تاچ برای رها کردن میوه
-    gameCanvas.addEventListener('touchend', function(event) {
-        if (isPaused) return;
-        
-        // اضافه کردن بررسی وضعیت ابیلیتی‌ها - اگر ابیلیتی فعال است، از رها کردن میوه جلوگیری کنیم
-        if (isRemoveAbilityActive || isUpgradeAbilityActive) {
-            console.log('Ability is active, preventing fruit drop on touchend');
-            return;
+gameCanvas.addEventListener('touchend', function(event) {
+    if (isPaused) return;
+    
+    // اضافه کردن بررسی وضعیت ابیلیتی‌ها - اگر ابیلیتی فعال است، از رها کردن میوه جلوگیری کنیم
+    if (isRemoveAbilityActive || isUpgradeAbilityActive || abilityAppliedInTouch) {
+        console.log('Ability is active or was just applied, preventing fruit drop on touchend');
+        return;
+    }
+
+    // Existing fruit dropping logic (only if not in remove mode and canDrop is true)
+    if (currentFruit && currentFruit.isStatic && canDrop) {
+        const fruitIdentifierText = currentFruit.fruitType ? (currentFruit.fruitType.emoji || `L${currentFruit.fruitType.level}`) : 'UnknownFruit';
+        console.log(
+            "Touchend event for dropping. currentFruit:", fruitIdentifierText,
+            "isStatic:", currentFruit.isStatic,
+            "canDrop:", canDrop
+        );
+
+        const droppingFruitIdentifier = currentFruit.fruitType.emoji || `L${currentFruit.fruitType.level}`;
+        console.log("Dropping fruit:", droppingFruitIdentifier);
+
+        // مخفی کردن خط نشانگر
+        if (dropLine) {
+            dropLine.style.display = 'none';
         }
 
-        // Existing fruit dropping logic (only if not in remove mode and canDrop is true)
-        if (currentFruit && currentFruit.isStatic && canDrop) {
-            const fruitIdentifierText = currentFruit.fruitType ? (currentFruit.fruitType.emoji || `L${currentFruit.fruitType.level}`) : 'UnknownFruit';
-            console.log(
-                "Touchend event for dropping. currentFruit:", fruitIdentifierText,
-                "isStatic:", currentFruit.isStatic,
-                "canDrop:", canDrop
-            );
+        Matter.Body.setStatic(currentFruit, false);
+        Matter.Sleeping.set(currentFruit, false); // Ensure it's awake
+        console.log("Fruit made dynamic. isStatic is now:", currentFruit.isStatic, "isSleeping is now:", currentFruit.isSleeping);
 
-            const droppingFruitIdentifier = currentFruit.fruitType.emoji || `L${currentFruit.fruitType.level}`;
-            console.log("Dropping fruit:", droppingFruitIdentifier);
+        currentFruit = null; // Release control
+        console.log("currentFruit set to null.");
 
-            // مخفی کردن خط نشانگر
-            if (dropLine) {
-                dropLine.style.display = 'none';
-            }
+        canDrop = false; // Prevent immediate re-drop until cooldown finishes
 
-            Matter.Body.setStatic(currentFruit, false);
-            Matter.Sleeping.set(currentFruit, false); // Ensure it's awake
-            console.log("Fruit made dynamic. isStatic is now:", currentFruit.isStatic, "isSleeping is now:", currentFruit.isSleeping);
-
-            currentFruit = null; // Release control
-            console.log("currentFruit set to null.");
-
-            canDrop = false; // Prevent immediate re-drop until cooldown finishes
-
-            setTimeout(() => {
-                console.log("Drop cooldown finished. Calling prepareNextFruit.");
-                prepareNextFruit(); // This will set canDrop = true again
-            }, dropCooldown);
-        }
-    });
+        setTimeout(() => {
+            console.log("Drop cooldown finished. Calling prepareNextFruit.");
+            prepareNextFruit(); // This will set canDrop = true again
+        }, dropCooldown);
+    }
+});
 } else {
     console.error("gameCanvas is not initialized. Mouse down listener for drop/remove not added.");
 }

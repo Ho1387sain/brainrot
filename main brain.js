@@ -1328,8 +1328,9 @@ if (gameCanvas) { // Check if gameCanvas is initialized
     gameCanvas.addEventListener('touchend', function(event) {
         if (isPaused) return;
         
-        // Skip if abilities are active - they're handled by the click event
+        // اضافه کردن بررسی وضعیت ابیلیتی‌ها - اگر ابیلیتی فعال است، از رها کردن میوه جلوگیری کنیم
         if (isRemoveAbilityActive || isUpgradeAbilityActive) {
+            console.log('Ability is active, preventing fruit drop on touchend');
             return;
         }
 
